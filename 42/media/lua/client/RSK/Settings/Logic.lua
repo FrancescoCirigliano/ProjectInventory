@@ -5,7 +5,7 @@ RSK.Settings.Logic = RSK.Settings.Logic or {}
 local L = RSK.Settings.Logic
 
 -- Modules shown in the Modules tab (D-125), in window order.
-L.MODULES = { "Inventory", "Nested", "Search", "Equipment" }
+L.MODULES = { "Inventory", "Nested", "Search", "Equipment", "Collect" }
 -- Internal keys left alone by "Reset to defaults" (they are not user settings).
 L.RESET_SKIP = { ["equipment.layoutSaved"] = true }
 L.CONFIRM_MS = 3000

@@ -84,6 +84,11 @@ function Win:createChildren()
     caption(p, PAD + 92, tx("Icons"))
     choiceRow(self, p, PAD + 120, RSK.Inventory.Logic.ICON_ORDER, function(v) return tx("Icons_" .. v) end,
         function() return C.get("inventory.iconSize") end, function(v) C.set("inventory.iconSize", v) end)
+    -- Collectibles: reset the found list when the character dies (D-140)
+    caption(p, PAD + 184, tx("Collect"))
+    self.resetOnDeath = UI.add(p, UI.Toggle:new(PAD, PAD + 212, WIN_W - 2 * PAD, tx("ResetOnDeath"),
+        C.get("collect.resetOnDeath") and true or false, self,
+        function(win, v) C.set("collect.resetOnDeath", v and true or false); win:refresh() end))
 
     -- Modules: toggle + status
     p = page("modules")
@@ -110,6 +115,7 @@ end
 
 function Win:refresh()
     for _, row in ipairs(self.rows) do row.update(row.current) end
+    if self.resetOnDeath then self.resetOnDeath.value = C.get("collect.resetOnDeath") and true or false end
     if self.scale and not self.scale.dragging then self.scale.value = math.max(L.SCALE_MIN, math.min(L.SCALE_MAX, C.get("ui.scale"))) end
     for _, r in ipairs(self.modRows) do
         local m = K.modules[r.id]

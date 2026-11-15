@@ -9,6 +9,7 @@ require "RSK/Core/Actions"
 require "RSK/Nested/Nested"
 require "RSK/Search/Search"
 require "RSK/Equipment/Equipment"
+require "RSK/Collect/Collect"
 
 RSK = RSK or {}
 RSK.Tests = RSK.Tests or {}
@@ -24,8 +25,18 @@ local function log(s) print("[RSK-TEST] " .. s) end
 local function P() return getSpecificPlayer(0) end
 
 -- ------------------------------------------------------------------ assertions
+-- Stops the current test without raising a Lua error: under -debug an error thrown inside the
+-- test coroutine escapes coroutine.resume and leaves the coroutine "running", which stopped the
+-- whole run. The test yields and is never resumed; onTick records the outcome and moves on.
+local function stop(kind, msg)
+    T.stopKind, T.stopMsg = kind, tostring(msg)
+    coroutine.yield()
+end
+local function fail(msg) stop("fail", msg) end
+local function skip(msg) stop("skip", msg) end
+
 local function eq(a, b, msg)
-    if a ~= b then error((msg or "valore") .. ": atteso " .. tostring(b) .. ", ottenuto " .. tostring(a)) end
+    if a ~= b then fail((msg or "valore") .. ": atteso " .. tostring(b) .. ", ottenuto " .. tostring(a)) end
 end
 
 local function desc(c)
@@ -35,7 +46,7 @@ end
 
 -- ------------------------------------------------------------------ creation and cleanup
 local function track(it)
-    if not it then error("SKIP: oggetto non creato") end
+    if not it then skip("oggetto non creato") end
     created[#created + 1] = it
     return it
 end
@@ -70,6 +81,10 @@ local function cleanup()
         RSK.Core.setEnabled(T.reenable, true)
         T.reenable = nil
     end
+    if T.restore then
+        pcall(T.restore)
+        T.restore = nil
+    end
     if RSK.Nested then RSK.Nested.closeAll() end
 end
 
@@ -80,7 +95,7 @@ local function waitQueue()
     repeat
         coroutine.yield()
         t = t + 1
-        if t > TIMEOUT then error("timeout: la coda delle azioni non si svuota") end
+        if t > TIMEOUT then fail("timeout: la coda delle azioni non si svuota") end
     until not q.queue or #q.queue == 0
     coroutine.yield()
 end
@@ -102,10 +117,10 @@ local function contract(items, dest)
         local r = plan.refused[1]
         T.contracts = T.contracts + 1
         if ours and not engine then
-            error("T-11 contratto: RSK accetta, il motore rifiuta " .. it:getName() .. " -> " .. desc(dest))
+            fail("T-11 contratto: RSK accetta, il motore rifiuta " .. it:getName() .. " -> " .. desc(dest))
         end
         if not ours and engine and r and (r.reason == "tooBig" or (r.reason == "noRoom" and r.container == dest)) then
-            error("T-11 contratto: RSK rifiuta (" .. r.reason .. "), il motore accetta " .. it:getName() .. " -> " .. desc(dest))
+            fail("T-11 contratto: RSK rifiuta (" .. r.reason .. "), il motore accetta " .. it:getName() .. " -> " .. desc(dest))
         end
     end
 end
@@ -123,9 +138,9 @@ local function check(items, dest)
     for _, it in ipairs(plan.accepted) do acc[it] = true end
     for i, it in ipairs(items) do
         if acc[it] then
-            if not dest:contains(it) then error("accettato ma non arrivato: " .. it:getName() .. " -> " .. desc(dest)) end
+            if not dest:contains(it) then fail("accettato ma non arrivato: " .. it:getName() .. " -> " .. desc(dest)) end
         elseif src[i] and not src[i]:contains(it) then
-            error("rifiutato ma sparito dalla sorgente: " .. it:getName())
+            fail("rifiutato ma sparito dalla sorgente: " .. it:getName())
         end
     end
     return n, refused
@@ -167,7 +182,7 @@ add("T-02", "il kit esterno (4) ferma quello interno", function()
     eq(n, 1, "accodati")
     eq(refused and refused.reason, "noRoom", "motivo")
     local o = outer:getInventory()
-    if o:getCapacityWeight() > o:getEffectiveCapacity(p) + R.EPS then error("kit esterno oltre capienza: " .. desc(o)) end
+    if o:getCapacityWeight() > o:getEffectiveCapacity(p) + R.EPS then fail("kit esterno oltre capienza: " .. desc(o)) end
 end)
 
 add("T-03a", "MaxItemSize: rottame di metallo nel kit da cucito", function()
@@ -230,7 +245,7 @@ add("T-07b", "borsa in un mobile vicino: dentro e fuori", function()
             end
         end
     end
-    if not box then error("SKIP: nessun mobile con contenitore accanto al PG") end
+    if not box then skip("nessun mobile con contenitore accanto al PG") end
     local bag = spawnIn(box, "Base.Bag_Schoolbag")
     local b = spawnIn(p:getInventory(), "Base.Bandage")
     eq(check({ b }, bag:getInventory()), 1, "dentro")
@@ -241,7 +256,7 @@ add("T-08", "fuori portata: la finestra si chiude", function()
     local p = P()
     local sq0 = p:getCurrentSquare()
     local far = getCell():getGridSquare(sq0:getX() + 12, sq0:getY(), sq0:getZ())
-    if not far then error("SKIP: quadrato lontano non caricato") end
+    if not far then skip("quadrato lontano non caricato") end
     local near = spawnFloor(sq0, "Base.Bag_Schoolbag")
     local away = spawnFloor(far, "Base.Bag_Schoolbag")
     eq(RSK.Nested.reachable(p, away), false, "lontana raggiungibile")
@@ -456,6 +471,68 @@ add("T-23", "M2: apertura, schede spostate e restituite, indossa e togli, ferita
     Q.destroy(0)
 end)
 
+-- P3.1 collectibles (D-130, D-138): keys on real items; found when entering the player
+-- inventory (nested bag included), not when only on the floor. The store is restored afterwards.
+add("T-26", "collezionabili: riconoscimento, trovato in inventario e borsa annidata, non a terra", function()
+    local Co = RSK.Collect
+    eq(RSK.Core.isActive(Co.ID), true, "modulo Collect spento")
+    local p = P()
+    local inv = p:getInventory()
+    eq(Co.keyOf(spawnIn(inv, "Base.BookCarpentry1")), "book:Base.BookCarpentry1", "libro di abilita'")
+    eq(Co.keyOf(spawnIn(inv, "Base.SmithingMag1")), "recipe:Base.SmithingMag1", "rivista di ricette")
+    eq(Co.keyOf(spawnIn(inv, "Base.MuldraughMap")), "map:MuldraughMap", "mappa")
+    eq(Co.keyOf(spawnIn(inv, "Base.Axe")), nil, "oggetto comune")
+    -- the two volumes are removed from the store and put back by cleanup(), also on failure
+    -- (no pcall here: waitQueue yields, and Kahlua cannot yield across a pcall)
+    local store = Co.store()
+    local k2, k3 = "book:Base.BookCarpentry2", "book:Base.BookCarpentry3"
+    local had2, had3 = store.found[k2], store.found[k3]
+    T.restore = function() store.found[k2], store.found[k3] = had2, had3 end
+    store.found[k2], store.found[k3] = nil, nil
+    local sq = p:getCurrentSquare()
+    local floor = spawnFloor(sq, "Base.BookCarpentry2")
+    Co.scanAll()
+    eq(Co.isFound(floor), false, "trovato solo perche' a terra")
+    local bag = spawnIn(inv, "Base.Bag_Schoolbag")
+    local inner = spawnIn(bag:getInventory(), "Base.Bag_Schoolbag")
+    spawnIn(inner:getInventory(), "Base.BookCarpentry2")
+    Co.scanAll()
+    eq(Co.isFound(floor), true, "non trovato dentro la borsa annidata")
+    eq(Co.statusOf(floor, false), "found", "icona dopo il ritrovamento")
+    eq(Co.statusOf(floor, true), "read", "letto vince")
+    -- transfer from loot (a bag on the floor): found as soon as the action ends, no scan.
+    -- An item spawned straight on the floor has no container and cannot be transferred.
+    local floorBag = spawnFloor(sq, "Base.Bag_Schoolbag")
+    local b3 = spawnIn(floorBag:getInventory(), "Base.BookCarpentry3")
+    eq(Co.isFound(b3), false, "volume 3 gia' trovato")
+    A.transfer(p, { b3 }, inv)
+    waitQueue()
+    eq(ISInventoryTransferAction.transferItem == Co.wrapTransfer, true, "aggancio del trasferimento assente")
+    eq(inv:contains(b3), true, "volume 3 non arrivato nell'inventario")
+    eq(Co.isFound(b3), true, "non trovato subito dopo il trasferimento")
+end)
+
+-- D-140: character death empties the found list only with the setting on.
+-- The real list and the setting are put back by cleanup(), also on failure.
+add("T-27", "collezionabili: morte del PG con azzeramento acceso e spento", function()
+    local Co, C = RSK.Collect, RSK.Config
+    local store = Co.store()
+    local saved, oldOpt = {}, C.get(Co.RESET_KEY)
+    for k, v in pairs(store.found) do saved[k] = v end
+    T.restore = function()
+        store.found = {}
+        for k, v in pairs(saved) do store.found[k] = v end
+        C.set(Co.RESET_KEY, oldOpt)
+    end
+    store.found["book:Base.BookCarpentry1"] = true
+    C.set(Co.RESET_KEY, false)
+    Co.onPlayerDeath()
+    eq(store.found["book:Base.BookCarpentry1"], true, "spento: elenco svuotato")
+    C.set(Co.RESET_KEY, true)
+    Co.onPlayerDeath()
+    eq(Co.Logic.count(store), 0, "acceso: elenco non svuotato")
+end)
+
 -- ------------------------------------------------------------------ run
 function T.finish()
     cleanup()
@@ -501,7 +578,18 @@ local function onTick()
         return
     end
     local ok, err = coroutine.resume(T.co)
-    if not ok then
+    if ok and T.stopKind then
+        local kind, msg = T.stopKind, T.stopMsg
+        T.stopKind, T.stopMsg = nil, nil
+        if kind == "skip" then
+            T.res.skip = T.res.skip + 1
+            log("SKIP " .. t.id .. " " .. t.name .. ": " .. msg)
+        else
+            T.res.fail = T.res.fail + 1
+            log("FAIL " .. t.id .. " " .. t.name .. ": " .. msg)
+        end
+        T.next()
+    elseif not ok then
         local msg = tostring(err)
         if msg:find("SKIP:", 1, true) then
             T.res.skip = T.res.skip + 1

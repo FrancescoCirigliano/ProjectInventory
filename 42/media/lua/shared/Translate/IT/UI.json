@@ -113,10 +113,13 @@
     "UI_RSK_Set_Mod_Nested": "Finestre dei contenitori",
     "UI_RSK_Set_Mod_Search": "Ricerca",
     "UI_RSK_Set_Mod_Equipment": "Equipaggiamento e salute",
+    "UI_RSK_Set_Mod_Collect": "Collezionabili",
     "UI_RSK_Set_St_on": "Attivo",
     "UI_RSK_Set_St_off": "Spento",
     "UI_RSK_Set_St_failed": "In errore: torna attivo riaccendendolo",
     "UI_RSK_Set_St_requires": "Richiede: %1",
+    "UI_RSK_Set_Collect": "Collezionabili",
+    "UI_RSK_Set_ResetOnDeath": "Azzera i trovati alla morte del personaggio",
     "UI_RSK_Set_Reset": "Ripristina predefiniti",
     "UI_RSK_Set_ResetConfirm": "Conferma ripristino"
 }

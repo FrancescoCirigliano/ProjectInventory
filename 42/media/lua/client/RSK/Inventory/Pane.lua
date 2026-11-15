@@ -31,10 +31,12 @@ local function kid(el, k)
 end
 local function tx(k, ...) return getText("UI_RSK_Inv_" .. k, ...) end
 
-local tickTex
-local function tick()
-    if tickTex == nil then tickTex = getTexture("media/ui/Tick_Mark-10.png") or false end
-    return tickTex or nil
+-- Status icons (D-26): white masks tinted by the theme.
+local statusTex = {}
+local function stex(name)
+    local t = statusTex[name]
+    if t == nil then t = getTexture("media/ui/RSK/status_" .. name .. ".png") or false; statusTex[name] = t end
+    return t or nil
 end
 
 local function geom(el) return { x = el:getX(), y = el:getY(), w = el:getWidth(), h = el:getHeight() } end
@@ -315,12 +317,26 @@ local function rowModel(item, player)
     return m
 end
 
--- Reading state (D-26, D-27): for now only the character's "read", like the vanilla tick.
--- "Not found" and "found" come with collectible tracking (M4, P3.1).
+-- Reading state (D-26, D-27, D-138): "read" from the character's vanilla data, like the vanilla
+-- tick; with the Collect module on, collectibles not read yet are "found" or "new".
 function P.readState(pane, player, item)
-    if pane:isLiteratureRead(player, item) or item:hasBeenSeen(player) or item:hasBeenHeard(player)
-        or player:hasReadMap(item) then return "read" end
-    return nil
+    local read = pane:isLiteratureRead(player, item) or item:hasBeenSeen(player) or item:hasBeenHeard(player)
+        or player:hasReadMap(item)
+    local st = RSK.Collect and RSK.Collect.guardedStatus and RSK.Collect.guardedStatus(item, read)
+    if st then return st ~= "none" and st or nil end
+    return read and "read" or nil
+end
+
+local function drawStatus(g, status, x, cy, s)
+    local y = cy - s / 2
+    if status == "new" then
+        D.texture(g, stex("disc"), x, y, s, s, "danger")
+        D.texture(g, stex("bang"), x, y, s, s, "ink")
+    elseif status == "found" then
+        D.texture(g, stex("eye"), x, y, s, s, "text")
+    else
+        D.texture(g, stex("read"), x, y, s, s, "ok")
+    end
 end
 
 local function nestedCount(item)
@@ -525,8 +541,7 @@ function P.drawRow(pane, i, xoff, yoff, ctx)
     end
     if status then
         x = x + g6
-        local s = px(inv.status)
-        D.texture(g, tick(), x, cy - s / 2, s, s, "ok")
+        drawStatus(g, status, x, cy, px(inv.status))
     end
 
     -- bar at the bottom of the row or card (D-101); parents have none

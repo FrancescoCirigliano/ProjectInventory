@@ -3,6 +3,9 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow `0.MINOR.PATCH` until 1.0: MINOR = development phase, PATCH = fixes.
 
 ## [0.3.0-dev] — unreleased
+### Added
+- Collectibles (vanilla): skill books, recipe magazines and schematics, print media that reveal map locations, maps and recorded media are tracked per world as "found" once they enter the player inventory (nested bags included). Status icon next to the name: red exclamation mark = not found, eye = found, check = read (from the character's vanilla data).
+- Settings, Inventory tab: "Reset found items when the character dies" (on by default); turned off, the next character in the same world keeps the found list.
 
 ## [0.2.0] — 2026-11-15
 ### Added
