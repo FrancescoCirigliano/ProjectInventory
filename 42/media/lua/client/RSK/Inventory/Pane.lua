@@ -31,11 +31,21 @@ local function kid(el, k)
 end
 local function tx(k, ...) return getText("UI_RSK_Inv_" .. k, ...) end
 
--- Status icons (D-26): white masks tinted by the theme.
+-- Status icons (D-26, D-141): filled badges, white masks tinted by the theme. One PNG per size
+-- (tools/icongen/gen_status.py): the closest size is drawn 1:1 on whole pixels, never scaled.
+local STATUS_SIZES = { 12, 13, 14, 15, 16, 17, 18, 20, 22, 24, 26, 28, 32 }
 local statusTex = {}
-local function stex(name)
-    local t = statusTex[name]
-    if t == nil then t = getTexture("media/ui/RSK/status_" .. name .. ".png") or false; statusTex[name] = t end
+local function statusSize(s)
+    local best = STATUS_SIZES[1]
+    for _, n in ipairs(STATUS_SIZES) do
+        if math.abs(n - s) < math.abs(best - s) then best = n end
+    end
+    return best
+end
+local function stex(name, n)
+    local key = name .. "_" .. n
+    local t = statusTex[key]
+    if t == nil then t = getTexture("media/ui/RSK/status/" .. key .. ".png") or false; statusTex[key] = t end
     return t or nil
 end
 
@@ -327,16 +337,15 @@ function P.readState(pane, player, item)
     return read and "read" or nil
 end
 
+local STATUS_LOOK = {
+    new = { disc = "danger", glyph = "bang" }, found = { disc = "muted", glyph = "eye" }, read = { disc = "ok", glyph = "check" },
+}
 local function drawStatus(g, status, x, cy, s)
-    local y = cy - s / 2
-    if status == "new" then
-        D.texture(g, stex("disc"), x, y, s, s, "danger")
-        D.texture(g, stex("bang"), x, y, s, s, "ink")
-    elseif status == "found" then
-        D.texture(g, stex("eye"), x, y, s, s, "text")
-    else
-        D.texture(g, stex("read"), x, y, s, s, "ok")
-    end
+    local look = STATUS_LOOK[status] or STATUS_LOOK.read
+    local n = statusSize(s)
+    local ix, iy = math.floor(x + (s - n) / 2 + 0.5), math.floor(cy - n / 2 + 0.5)
+    D.texture(g, stex("disc", n), ix, iy, n, n, look.disc)
+    D.texture(g, stex(look.glyph, n), ix, iy, n, n, "ink")
 end
 
 local function nestedCount(item)
