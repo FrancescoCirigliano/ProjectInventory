@@ -35,5 +35,12 @@ python tests/run_unit.py
 
 In-game tests: start the game with `-debug`, right-click in the world → "RSK: esegui test".
 
+Release build (checks versions and tests, excludes the in-game tests, zips the mod):
+
+```
+powershell -File tools/release.ps1 -Version 0.2.0            # dry run
+powershell -File tools/release.ps1 -Version 0.2.0 -Publish   # also tags v0.2.0
+```
+
 ## License
 All rights reserved, with the permissions listed in [LICENSE](LICENSE). Fonts: SIL OFL 1.1.

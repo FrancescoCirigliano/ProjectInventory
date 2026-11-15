@@ -6,6 +6,7 @@ CLAUDE.md
 _to_delete/
 
 # Generated / backups
+build/
 __pycache__/
 *.pyc
 *.bak*
