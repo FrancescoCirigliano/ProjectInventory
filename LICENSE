@@ -1,0 +1,31 @@
+Project Inventory — a Project Zomboid Build 42 mod
+Copyright (c) 2026 the Project Inventory author. All rights reserved.
+
+The source code and assets in this repository are published so they can be
+read and studied. Except for the permissions below, no right to copy, modify,
+publish, upload or distribute them is granted.
+
+You MAY:
+  1. Read and study the code.
+  2. Modify it for your own personal, private use.
+  3. Submit changes back to this repository (issues, pull requests).
+  4. Publish compatibility patches or add-ons that require Project Inventory
+     as a dependency and do not include its files.
+
+You MAY NOT, without prior written permission from the author:
+  - Re-upload or redistribute this mod, in whole or in part, modified or not,
+    on the Steam Workshop or anywhere else.
+  - Include its code or assets in another mod or modpack.
+  - Use it for commercial purposes.
+
+Third-party components keep their own licenses:
+  - Fira Sans Extra Condensed and every font file derived from it
+    (42/media/fonts/**) are licensed under the SIL Open Font License 1.1,
+    see 42/media/fonts/rsk/OFL.txt and tools/fontgen/src/OFL.txt.
+  - Project Zomboid is (c) The Indie Stone; this mod is not affiliated with
+    or endorsed by The Indie Stone.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE, INCLUDING DAMAGE TO
+SAVE FILES.

@@ -1,0 +1,13 @@
+# Local only (D-133): documentation, design sources, agent files
+docs/
+art/
+CLAUDE.md
+.claude/
+_to_delete/
+
+# Generated / backups
+__pycache__/
+*.pyc
+*.bak*
+Thumbs.db
+desktop.ini

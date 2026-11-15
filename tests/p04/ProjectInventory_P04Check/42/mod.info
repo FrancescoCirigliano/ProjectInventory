@@ -1,0 +1,4 @@
+name=Project Inventory - P0.4 Check
+id=ProjectInventory_P04Check
+description=Solo test P0.4: istantanee di inventario, contenitori vicini e ModData in Zomboid/Lua/RSK_P04_*.txt. Non usare in partite normali.
+versionMin=42.20.0
