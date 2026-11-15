@@ -1,5 +1,5 @@
 name=Project Inventory
 id=ProjectInventory
 description=Reskin della UI di Project Zomboid B42 (in sviluppo): inventario, loot, contenitori, ricerca, equipaggiamento e impostazioni a tema.
-modversion=0.2.0
+modversion=0.3.0-dev
 versionMin=42.20.0

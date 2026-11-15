@@ -2,6 +2,8 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow `0.MINOR.PATCH` until 1.0: MINOR = development phase, PATCH = fixes.
 
+## [0.3.0-dev] — unreleased
+
 ## [0.2.0] — 2026-11-15
 ### Added
 - Core: modules with dependencies, vanilla fallback on error, event bus, config file in `Zomboid/Lua/`.
