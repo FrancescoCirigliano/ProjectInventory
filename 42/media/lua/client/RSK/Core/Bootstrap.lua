@@ -13,7 +13,7 @@ local K = RSK.Core
 local B, C = RSK.Bus, RSK.Config
 local unpack = unpack or table.unpack
 local function pack(...) return { n = select("#", ...), ... } end
-K.VERSION = "0.2.0-dev" -- D-132: keep modversion in 42/mod.info and CHANGELOG.md in sync on every release
+K.VERSION = "0.2.0" -- D-132: keep modversion in 42/mod.info and CHANGELOG.md in sync on every release
 local PHASE = { load = 0, boot = 1, game = 2 }
 
 function K.log(msg) print("[RSK] " .. tostring(msg)) end
