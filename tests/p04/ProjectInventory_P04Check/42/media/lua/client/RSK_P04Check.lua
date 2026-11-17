@@ -1,7 +1,8 @@
 -- P0.4 - snapshots for the mod add/remove test (D-05, Analysis 2.6).
 -- Separate mod: stays active even when ProjectInventory is disabled.
 -- Writes Zomboid/Lua/RSK_P04_<ms>_<label>.txt: items (ID and type) in the player inventory,
--- in nested bags and in containers within 2 squares; global and player ModData keys.
+-- in nested bags and in containers within 2 squares; global and player ModData keys;
+-- the collectibles found list (RSK_Collect, M4) for CA3.
 local P04 = {}
 local RADIUS = 2
 
@@ -65,8 +66,20 @@ function P04.snapshot(label)
         end
     end
     local names = ModData.getTableNames()
-    for i = 0, names:size() - 1 do out[#out + 1] = "GMODDATA|" .. tostring(names:get(i)) end
+    local hasCollect = false
+    for i = 0, names:size() - 1 do
+        local n = tostring(names:get(i))
+        out[#out + 1] = "GMODDATA|" .. n
+        if n == "RSK_Collect" then hasCollect = true end
+    end
     for _, k in ipairs(sortedKeys(p:getModData())) do out[#out + 1] = "PMODDATA|" .. k end
+    -- read without creating the table: with ProjectInventory off it must stay as it was
+    if hasCollect then
+        local c = ModData.get("RSK_Collect")
+        if type(c) == "table" and type(c.found) == "table" then
+            for _, k in ipairs(sortedKeys(c.found)) do out[#out + 1] = "COLLECT|" .. k end
+        end
+    end
     table.sort(out)
     local f = getFileWriter("RSK_P04_" .. tostring(getTimestampMs()) .. "_" .. label .. ".txt", true, false)
     for _, l in ipairs(head) do f:write(l .. "\n") end
