@@ -533,6 +533,27 @@ add("T-27", "collezionabili: morte del PG con azzeramento acceso e spento", func
     eq(Co.Logic.count(store), 0, "acceso: elenco non svuotato")
 end)
 
+-- D-142: NewMusic album packs, one collectible per album. Skipped without NewMusic/NMGreatestHits.
+add("T-28", "collezionabili delle mod: NewMusic per album, custodia vuota esclusa, CD vanilla alle regole vanilla", function()
+    local Co = RSK.Collect
+    if NMMediaContract == nil then skip("NewMusic non attiva") end
+    local store = Co.store()
+    local saved = {}
+    for k, v in pairs(store.found) do saved[k] = v end
+    T.restore = function()
+        store.found = {}
+        for k, v in pairs(saved) do store.found[k] = v end
+    end
+    local inv = P():getInventory()
+    local album = "mod:NewMusic:album:NMGreatestHits:GreatestHits1"
+    eq(Co.keyOf(spawnIn(inv, "NMGreatestHits.GreatestHits1CassetteA")), album, "cassetta lato A")
+    eq(Co.keyOf(spawnIn(inv, "NMGreatestHits.GreatestHits1CassetteB")), album, "cassetta lato B")
+    eq(Co.keyOf(spawnIn(inv, "NMGreatestHits.GreatestHits1CD")), album, "CD dello stesso album")
+    eq(Co.keyOf(spawnIn(inv, "NMGreatestHits.GreatestHits1CDCoverEmpty")), nil, "custodia vuota")
+    local k = Co.keyOf(spawnIn(inv, "Base.Disc_Retail"))
+    eq(k == nil or k:sub(1, 6) == "media:", true, "CD vanilla preso da NewMusic: " .. tostring(k))
+end)
+
 -- ------------------------------------------------------------------ run
 function T.finish()
     cleanup()

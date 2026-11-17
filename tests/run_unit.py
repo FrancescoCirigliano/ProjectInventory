@@ -25,6 +25,7 @@ MODULES = [
     "RSK/Equipment/Logic.lua",
     "RSK/Settings/Logic.lua",
     "RSK/Collect/Logic.lua",
+    "RSK/Collect/NewMusic.lua",
 ]
 TESTS = sorted(UNIT.glob("test_*.lua"))
 

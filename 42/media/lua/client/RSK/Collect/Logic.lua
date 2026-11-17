@@ -66,6 +66,60 @@ function L.count(store)
     return n
 end
 
+-- ---------------------------------------------------------------- collectibles of other mods (D-142)
+-- Providers: { id = "ModName", match = function(item, fullType) -> key or nil }. They are asked
+-- before the vanilla rules; the stored key is "mod:<id>:<key>". RSK.Collect.register is the API.
+L.providers = L.providers or {}
+
+-- Adds or replaces a provider (same id). Returns true if accepted.
+function L.register(def)
+    if type(def) ~= "table" or not nonEmpty(def.id) or type(def.match) ~= "function" then return false end
+    for i = 1, #L.providers do
+        if L.providers[i].id == def.id then L.providers[i] = def; return true end
+    end
+    L.providers[#L.providers + 1] = def
+    return true
+end
+RSK.Collect.register = L.register
+
+-- Key from the first provider that recognises the item. A provider that raises an error is
+-- dropped (onError(id, err) is told) so it cannot break the inventory.
+function L.modKey(item, fullType, onError)
+    local i = 1
+    while i <= #L.providers do
+        local p = L.providers[i]
+        local ok, key = pcall(p.match, item, fullType)
+        if not ok then
+            table.remove(L.providers, i)
+            if onError then onError(p.id, key) end
+        else
+            if nonEmpty(key) then return "mod:" .. p.id .. ":" .. key end
+            i = i + 1
+        end
+    end
+    return nil
+end
+
+-- Data files (media/lua/shared/RSK_Collect/*.lua) for mods without code:
+--   RSK_CollectData = RSK_CollectData or {}
+--   table.insert(RSK_CollectData, { id = "MyMod", items = { "MyMod.TapeA", "MyMod.TapeB" } })
+-- items as a list: one collectible per type; as a map { ["MyMod.TapeA"] = "album1", ... }: types
+-- with the same value are one collectible. Returns the number of providers registered.
+function L.loadData(list)
+    local n = 0
+    for _, e in ipairs(type(list) == "table" and list or {}) do
+        if type(e) == "table" and nonEmpty(e.id) and type(e.items) == "table" then
+            local keys = {}
+            for k, v in pairs(e.items) do
+                if type(k) == "number" and nonEmpty(v) then keys[v] = v
+                elseif nonEmpty(k) and nonEmpty(v) then keys[k] = v end
+            end
+            if L.register({ id = e.id, match = function(_, ft) return keys[ft] end }) then n = n + 1 end
+        end
+    end
+    return n
+end
+
 -- Icon state (D-26, D-138): "read" wins (vanilla data of the character, any literature);
 -- otherwise collectibles are "found" or "new"; everything else has no icon.
 function L.status(key, found, read)

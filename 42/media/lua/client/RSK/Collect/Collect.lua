@@ -8,6 +8,7 @@
 -- without the mod the table is just ignored.
 require "RSK/Core/Bootstrap"
 require "RSK/Collect/Logic"
+require "RSK/Collect/NewMusic"
 
 RSK = RSK or {}
 RSK.Collect = RSK.Collect or {}
@@ -67,6 +68,13 @@ function Co.keyOf(item)
         if c.final or getTimestampMs() - c.t < NEG_MS then return nil end
     end
     local ok, key, final = pcall(function()
+        -- other mods first (D-142): an item type never changes provider
+        if #L.providers > 0 then
+            local mk = L.modKey(item, item:getFullType(), function(id, err)
+                K.log("Collect: riconoscimento della mod " .. tostring(id) .. " tolto per errore: " .. tostring(err))
+            end)
+            if mk then return mk, true end
+        end
         local plain = not item:isRecordedMedia() and not item:IsLiterature() and not item:IsMap()
         if plain then return nil, true end
         return L.keyOf(Co.describe(item)), false
@@ -215,6 +223,11 @@ Co.moduleDef = K.register{
     id = Co.ID, when = "game",
     start = function(m)
         Co.data = nil
+        -- data files of other mods (media/lua/shared/RSK_Collect/*.lua, D-142)
+        local nData = L.loadData(RSK_CollectData)
+        local ids = {}
+        for _, p in ipairs(L.providers) do ids[#ids + 1] = p.id end
+        K.log("Collect: mod riconosciute " .. (#ids > 0 and table.concat(ids, ", ") or "nessuna") .. " (da file dati " .. nData .. ")")
         local seeded = 0
         for i = 0, getNumActivePlayers() - 1 do
             local p = getSpecificPlayer(i)
