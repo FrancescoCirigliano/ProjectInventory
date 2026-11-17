@@ -10,6 +10,7 @@ require "RSK/Nested/Nested"
 require "RSK/Search/Search"
 require "RSK/Equipment/Equipment"
 require "RSK/Collect/Collect"
+require "RSK/Menu/Menu"
 
 RSK = RSK or {}
 RSK.Tests = RSK.Tests or {}
@@ -552,6 +553,44 @@ add("T-28", "collezionabili delle mod: NewMusic per album, custodia vuota esclus
     eq(Co.keyOf(spawnIn(inv, "NMGreatestHits.GreatestHits1CDCoverEmpty")), nil, "custodia vuota")
     local k = Co.keyOf(spawnIn(inv, "Base.Disc_Retail"))
     eq(k == nil or k:sub(1, 6) == "media:", true, "CD vanilla preso da NewMusic: " .. tostring(k))
+end)
+
+-- P3.3 (D-144): the vanilla menu draws themed, with options in every state and a sub-menu;
+-- the borrowed draw functions are removed after each frame; module off = vanilla render.
+add("T-30", "menu contestuale: tutti gli stati disegnati a tema, nessun residuo, spento = vanilla", function()
+    local Mn = RSK.Menu
+    eq(RSK.Core.isActive(Mn.ID), true, "modulo Menu spento")
+    eq(ISContextMenu.render == Mn.wrapRender, true, "aggancio del disegno assente")
+    local ctx = ISContextMenu.get(0, getCore():getScreenWidth() / 2, getCore():getScreenHeight() / 2)
+    ctx:addOption("RSK test: normale", nil, nil)
+    ctx:addOption("RSK test: non disponibile", nil, nil).notAvailable = true
+    ctx:addOption("RSK test: disabilitata", nil, nil).isDisabled = true
+    ctx:addOption("RSK test: buona", nil, nil).goodColor = true
+    local chk = ctx:addOption("RSK test: spunta", nil, nil)
+    ctx:setOptionChecked(chk, true)
+    local subOpt = ctx:addOption("RSK test: sottomenu", nil, nil)
+    local sub = ctx:getNew(ctx)
+    sub:addOption("RSK test: voce interna", nil, nil)
+    ctx:addSubMenu(subOpt, sub)
+    T.restore = function() pcall(function() ctx:hideAndChildren() end) end
+    -- counted inside the render itself: UI drawing and this tick are not strictly sequential,
+    -- so looking at the menu from here could catch it in the middle of a frame
+    local r0, l0 = Mn.stats.renders, Mn.stats.leftovers
+    waitMs(400) -- several frames of themed render
+    eq(RSK.Core.isActive(Mn.ID), true, "disegno a tema andato in errore (modulo spento)")
+    eq(Mn.stats.renders > r0, true, "nessun disegno a tema eseguito")
+    eq(Mn.stats.leftovers - l0, 0, "contesto colori rimasto sul menu dopo il disegno")
+    eq(rawget(ISContextMenu, "drawRect") ~= nil, true, "metodi di disegno a tema assenti dalla classe")
+    eq(Mn.stats.shadowed, 0, "il menu ha funzioni di disegno proprie (altra mod, vedi log [RSK] Menu:)")
+    T.reenable = Mn.ID
+    RSK.Core.setEnabled(Mn.ID, false)
+    waitMs(100)
+    local r1 = Mn.stats.renders
+    waitMs(200)
+    eq(Mn.stats.renders, r1, "a modulo spento il disegno e' ancora a tema")
+    RSK.Core.setEnabled(Mn.ID, true)
+    T.reenable = nil
+    ctx:hideAndChildren()
 end)
 
 -- ------------------------------------------------------------------ run
