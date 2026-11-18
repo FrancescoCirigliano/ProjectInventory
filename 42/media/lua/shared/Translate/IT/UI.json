@@ -115,6 +115,8 @@
     "UI_RSK_Set_Mod_Equipment": "Equipaggiamento e salute",
     "UI_RSK_Set_Mod_ContextMenu": "Menu contestuale",
     "UI_RSK_Set_Mod_Tooltip": "Tooltip generico",
+    "UI_RSK_Set_Mod_Hotbar": "Hotbar",
+    "UI_RSK_Hotbar_Empty": "vuoto",
     "UI_RSK_Set_Mod_Collect": "Collezionabili",
     "UI_RSK_Set_St_on": "Attivo",
     "UI_RSK_Set_St_off": "Spento",

@@ -629,6 +629,46 @@ add("T-48a", "tooltip generico: disegno a tema, nessun residuo, spento = vanilla
     tip:removeFromUIManager()
 end)
 
+-- P3.4 (D-145): themed hotbar; reorder of the slots (vanilla list, item slot index, vanilla save)
+-- and back; module off = vanilla geometry and render.
+add("T-47a", "hotbar: disegno a tema, riordino e ritorno, spento = vanilla", function()
+    local Hb = RSK.Hotbar
+    eq(RSK.Core.isActive(Hb.ID), true, "modulo Hotbar spento")
+    eq(rawget(ISHotbar, "render") == Hb.wrapRender, true, "aggancio del disegno assente")
+    local hb = getPlayerHotbar(0)
+    eq(hb ~= nil, true, "hotbar del giocatore assente")
+    local r0 = Hb.stats.renders
+    waitMs(300)
+    eq(RSK.Core.isActive(Hb.ID), true, "disegno a tema andato in errore (modulo spento)")
+    eq(Hb.stats.renders > r0, true, "nessun disegno a tema eseguito")
+    eq(hb.margins, Hb.Logic.GEO.margin, "margine della mod non applicato")
+    eq(hb.width, (Hb.Logic.size(#hb.availableSlot, hb.slotWidth, hb.slotHeight)), "larghezza diversa dalla cornice (resta un pezzo vanilla)")
+    local n = #hb.availableSlot
+    if n >= 2 then
+        local types = {}
+        for i = 1, n do types[i] = hb.availableSlot[i].slotType end
+        eq(Hb.reorder(hb, 1, n + 1), true, "riordino rifiutato")
+        eq(hb.availableSlot[n].slotType, types[1], "primo slot non spostato in coda")
+        eq(getPlayer():getModData().hotbar[n], types[1], "ordine non salvato nei dati vanilla")
+        for i, item in pairs(hb.attachedItems) do
+            eq(item:getAttachedSlot(), i, "indice dello slot dell'oggetto non aggiornato")
+        end
+        eq(Hb.reorder(hb, n, 1), true, "ritorno rifiutato")
+        for i = 1, n do eq(hb.availableSlot[i].slotType, types[i], "ordine originale non ripristinato") end
+    else
+        log("T-47a: un solo slot, riordino non provato (indossa una cintura)")
+    end
+    T.reenable = Hb.ID
+    RSK.Core.setEnabled(Hb.ID, false)
+    waitMs(200)
+    eq(hb.margins, 10, "a modulo spento il margine non torna vanilla")
+    local r1 = Hb.stats.renders
+    waitMs(200)
+    eq(Hb.stats.renders, r1, "a modulo spento il disegno e' ancora a tema")
+    RSK.Core.setEnabled(Hb.ID, true)
+    T.reenable = nil
+end)
+
 -- ------------------------------------------------------------------ run
 function T.finish()
     cleanup()
