@@ -58,6 +58,8 @@ T.alpha = { hover = 0.6, disabled = 0.35, window = 1.0 }
 -- Typographic roles (Stile_UI, D-106). family = key in T.FONT_FILES.
 T.fonts = {
     screenTitle = { family = "semibold", size = 36, upper = true },
+    menuTitle   = { family = "semibold", size = 48, upper = true, tracking = 0.06 }, -- pause and menu screens (D-148)
+    menuButton  = { family = "semibold", size = 19, upper = true, tracking = 0.06 }, -- bottom bar buttons (D-148, D-20)
     windowTitle = { family = "semibold", size = 21 },
     invTitle    = { family = "semibold", size = 18 },
     body        = { family = "regular",  size = 16 },

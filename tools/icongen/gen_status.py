@@ -5,6 +5,8 @@ Writes white masks (tinted by the theme at draw time) for every size in SIZES:
   42/media/ui/RSK/status/bang_<n>.png   exclamation mark (ink)
   42/media/ui/RSK/status/eye_<n>.png    solid eye with pupil (ink)
   42/media/ui/RSK/status/check_<n>.png  check mark (ink)
+  42/media/ui/RSK/status/exit_<n>.png   door frame with left arrow, outline (pause "Quit to desktop", D-162)
+  42/media/ui/RSK/status/link_<n>.png   external link, outline (pause "Report a bug", D-162)
 Each size is drawn on its own (supersampled), not scaled down from one big image, so small
 icons stay sharp. The mod picks the size closest to the row's status size.
 Usage: python tools/icongen/gen_status.py   (requires Pillow)
@@ -60,7 +62,13 @@ def main():
         p = Pen(n); p.line([(12, 6.2), (12, 13.2)], 3.0); p.disc(12, 17.6, 1.75); p.save(OUT / f"bang_{n}.png")
         p = Pen(n); p.poly(almond(8.2, 5.2)); p.disc(12, 12, 3.0, CLEAR); p.disc(12, 12, 1.5); p.save(OUT / f"eye_{n}.png")
         p = Pen(n); p.line([(7.2, 12.4), (10.6, 15.8), (16.8, 8.6)], 3.2); p.save(OUT / f"check_{n}.png")
-    print(f"{len(SIZES) * 4} icons in {OUT}")
+        p = Pen(n)  # as the Pause.dc.html artboard: M14 4h5v16h-5 M10 8l-4 4 4 4 M6 12h10, stroke 2
+        p.line([(14, 4), (19, 4), (19, 20), (14, 20)], 2.0); p.line([(10, 8), (6, 12), (10, 16)], 2.0)
+        p.line([(6, 12), (16, 12)], 2.0); p.save(OUT / f"exit_{n}.png")
+        p = Pen(n)  # box open at the top right, arrow to the corner
+        p.line([(11, 6), (5, 6), (5, 19), (18, 19), (18, 13)], 2.0); p.line([(11, 13), (19, 5)], 2.0)
+        p.line([(14, 5), (19, 5), (19, 10)], 2.0); p.save(OUT / f"link_{n}.png")
+    print(f"{len(SIZES) * 6} icons in {OUT}")
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ require "RSK/Search/Search"
 require "RSK/Equipment/Equipment"
 require "RSK/Collect/Collect"
 require "RSK/Menu/Menu"
+require "RSK/Pause/Pause"
 
 RSK = RSK or {}
 RSK.Tests = RSK.Tests or {}
@@ -520,6 +521,94 @@ add("T-44", "Protezione: scheda a tema, valori = vanilla con giacca vera, pannel
     waitQueue()
     if old then ISTimedActionQueue.add(ISWearClothing:new(p, old, 1)); waitQueue() end
     Q.destroy(0)
+end)
+
+-- P3.4 (D-148): themed pause menu. Entries read from the vanilla menu in vanilla order; every bar button
+-- calls the handler of its vanilla item (spied, not run); vanilla parts hidden and restored; module off = vanilla.
+add("T-45", "pausa: voci vanilla in ordine, ogni pulsante chiama il gestore vanilla, spento = vanilla", function()
+    local Pz, K = RSK.Pause, RSK.Core
+    eq(K.isActive(Pz.ID), true, "modulo Pause spento")
+    eq(rawget(MainScreen, "prerender") == Pz.wrapPrerender, true, "aggancio della pausa assente")
+    eq(rawget(ISHotbar, "update") == Pz.wrapHotbarUpdate, true, "aggancio del tooltip della hotbar assente")
+    local ms = MainScreen.instance
+    eq(ms ~= nil and ms.inGame == true, true, "MainScreen di gioco assente")
+    eq(ms:getIsVisible(), false, "chiudi il menu di pausa prima del test")
+    local center, quit = Pz.Logic.entries(Pz.collect(ms))
+    local ids = {}
+    for i, e in ipairs(center) do ids[i] = tostring(e.internal) end
+    local list = table.concat(ids, ",")
+    eq(center[1].internal, "RETURN", "Riprendi per primo: " .. list)
+    eq(string.find(list, "OPTIONS", 1, true) ~= nil, true, "Opzioni assente: " .. list)
+    eq(string.find(list, "EXIT", 1, true) ~= nil, true, "Salva ed esci assente: " .. list)
+    eq(quit ~= nil and quit.internal, "QUIT_TO_DESKTOP", "Esci al desktop")
+    log("T-45: voci " .. list)
+    local VANILLA_ITEMS = { RETURN = true, OPTIONS = true, EXIT = true, QUIT_TO_DESKTOP = true }
+    Pz.apply(ms) -- creates the themed overlay (ms stays hidden)
+    local ov = ms.rskOverlay
+    local all = {}
+    for _, e in ipairs(center) do all[#all + 1] = e end
+    all[#all + 1] = quit
+    for _, e in ipairs(all) do
+        local el, called = e.item.el, false
+        if e.internal == "MODLISTDETAIL" then -- D-162: themed mod list instead of the vanilla popup
+            Pz.fire(e)
+            called = ov.mods ~= nil and #ov.mods.rows == getActivatedMods():size()
+            Pz.fire(e)
+            eq(ov.mods, nil, "pannello Mod non richiuso dal pulsante")
+        elseif e.item.button or el.Type == "ISButton" then
+            local orig = el.onclick
+            el.onclick = function() called = true end
+            Pz.fire(e)
+            el.onclick = orig
+        else
+            if VANILLA_ITEMS[e.internal] then
+                eq(el.onMouseDown == MainScreen.onMenuItemMouseDownMainMenu, true, "gestore vanilla sostituito: " .. e.internal)
+            end
+            local orig = rawget(el, "onMouseDown")
+            el.onMouseDown = function() called = true end
+            Pz.fire(e)
+            el.onMouseDown = orig
+        end
+        eq(called, true, "il pulsante non chiama il gestore di " .. tostring(e.internal))
+        T.contracts = T.contracts + 1
+    end
+    -- vanilla parts hidden by ours and back with the module off
+    eq(type(MainScreen.onClickReportBug), "function", "gestore vanilla di Segnala bug assente")
+    -- D-164: "Quit to desktop" opens our confirmation (never answered YES here)
+    eq(rawget(MainScreen, "quitToDesktopFunc") ~= nil, true, "aggancio della conferma assente")
+    MainScreen:quitToDesktopFunc()
+    eq(ov.confirm ~= nil, true, "conferma a tema non aperta")
+    eq(ms.quitToDesktopDialog, nil, "aperta anche la conferma vanilla")
+    eq(ov:isKeyConsumed(Keyboard.KEY_ESCAPE), true, "Esc non trattenuto dalla conferma")
+    local origConfirm, answered = MainScreen.onConfirmQuitToDesktop, nil
+    MainScreen.onConfirmQuitToDesktop = function(_, button) answered = button.internal end
+    ov:onKeyRelease(Keyboard.KEY_ESCAPE)
+    MainScreen.onConfirmQuitToDesktop = origConfirm
+    eq(answered, "NO", "Esc non chiama il gestore vanilla con No")
+    eq(ov:isKeyConsumed(Keyboard.KEY_ESCAPE), false, "Esc ancora trattenuto dopo l'annullamento")
+    ov.confirm = nil
+    T.contracts = T.contracts + 1
+    Pz.closed(ms)
+    local y0 = ms.bottomPanel:getY()
+    eq(y0 > -1000, true, "colonna vanilla rimasta fuori schermo dopo la chiusura della pausa")
+    Pz.apply(ms)
+    eq(ms.bottomPanel:getY() ~= y0, true, "colonna vanilla non nascosta")
+    Pz.closed(ms) -- as on closing the pause (onReturnToGame)
+    eq(Pz.ghost ~= nil, true, "effetto di uscita non avviato")
+    waitMs(400)
+    eq(Pz.ghost, nil, "effetto di uscita non concluso (fantasma rimasto)")
+    eq(K.isActive(Pz.ID), true, "effetto di uscita andato in errore (modulo spento)")
+    eq(ms.bottomPanel:getY(), y0, "colonna vanilla non ripristinata alla chiusura")
+    eq(ms.reportBug:getIsVisible(), true, "Segnala bug non ripristinato alla chiusura")
+    Pz.apply(ms)
+    eq(ms.reportBug:getIsVisible(), false, "Segnala bug vanilla visibile")
+    T.reenable = Pz.ID
+    K.setEnabled(Pz.ID, false)
+    eq(ms.bottomPanel:getY(), y0, "colonna vanilla non ripristinata")
+    eq(ms.reportBug:getIsVisible(), true, "Segnala bug non ripristinato")
+    eq(ms.rskOverlay:getIsVisible(), false, "pausa a tema rimasta visibile")
+    K.setEnabled(Pz.ID, true)
+    T.reenable = nil
 end)
 
 -- P3.1 collectibles (D-130, D-138): keys on real items; found when entering the player

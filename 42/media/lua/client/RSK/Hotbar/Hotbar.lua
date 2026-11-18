@@ -199,8 +199,15 @@ M.orig = M.orig or {}
 local O = M.orig
 local W = {}
 
+-- During the pause menu the hotbar is not drawn: ISHotbar:update shows it again while the moodles
+-- are visible, so its hover would stay active under the menu (D-148).
+local function paused() return RSK.Pause ~= nil and RSK.Pause.isShown ~= nil and RSK.Pause.isShown() end
+
 function W.render(self)
-    if K.isActive(M.ID) then gThemed(self); return end
+    if K.isActive(M.ID) then
+        if paused() then return end
+        gThemed(self); return
+    end
     applyGeometry(self, false)
     return O.render(self)
 end
