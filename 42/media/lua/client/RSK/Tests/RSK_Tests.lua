@@ -582,6 +582,10 @@ add("T-30", "menu contestuale: tutti gli stati disegnati a tema, nessun residuo,
     eq(Mn.stats.leftovers - l0, 0, "contesto colori rimasto sul menu dopo il disegno")
     eq(rawget(ISContextMenu, "drawRect") ~= nil, true, "metodi di disegno a tema assenti dalla classe")
     eq(Mn.stats.shadowed, 0, "il menu ha funzioni di disegno proprie (altra mod, vedi log [RSK] Menu:)")
+    -- D-145: rows 30, wider icon column (menu wider than vanilla), sub-menu past the menu
+    eq(ctx.itemHgt, Mn.Logic.rowHeight(ctx.fontHgt, RSK.Theme.px), "altezza delle righe")
+    local g = Mn.Logic.geometry(ctx.itemHgt, RSK.Theme.px)
+    eq(ctx.width >= Mn.origDraw.calcWidth(ctx) + g.shift - 1, true, "larghezza senza la colonna icone 28")
     T.reenable = Mn.ID
     RSK.Core.setEnabled(Mn.ID, false)
     waitMs(100)
@@ -591,6 +595,38 @@ add("T-30", "menu contestuale: tutti gli stati disegnati a tema, nessun residuo,
     RSK.Core.setEnabled(Mn.ID, true)
     T.reenable = nil
     ctx:hideAndChildren()
+end)
+
+-- P3.4 (D-145): the generic tooltip draws themed (title, rich text in red/green), no leftovers on
+-- the tooltip or its text panel; module off = vanilla render.
+add("T-48a", "tooltip generico: disegno a tema, nessun residuo, spento = vanilla", function()
+    local Tp = RSK.Tooltip
+    eq(RSK.Core.isActive(Tp.ID), true, "modulo Tooltip spento")
+    eq(ISToolTip.render == Tp.wrapRender, true, "aggancio del disegno assente")
+    local tip = ISToolTip:new()
+    tip:initialise()
+    tip:addToUIManager()
+    tip:setName("RSK test: tooltip")
+    tip.description = " <RGB:1,1,1> Normale <LINE> <RED> Manca <LINE> <GREEN> Presente "
+    tip.followMouse = false
+    tip:setDesiredPosition(getCore():getScreenWidth() / 2, getCore():getScreenHeight() / 3)
+    tip:setVisible(true)
+    T.restore = function() pcall(function() tip:setVisible(false); tip:removeFromUIManager() end) end
+    local r0, l0 = Tp.stats.renders, Tp.stats.leftovers
+    waitMs(400)
+    eq(RSK.Core.isActive(Tp.ID), true, "disegno a tema andato in errore (modulo spento)")
+    eq(Tp.stats.renders > r0, true, "nessun disegno a tema eseguito")
+    eq(Tp.stats.leftovers - l0, 0, "contesto colori rimasto sul tooltip dopo il disegno")
+    T.reenable = Tp.ID
+    RSK.Core.setEnabled(Tp.ID, false)
+    waitMs(100)
+    local r1 = Tp.stats.renders
+    waitMs(200)
+    eq(Tp.stats.renders, r1, "a modulo spento il disegno e' ancora a tema")
+    RSK.Core.setEnabled(Tp.ID, true)
+    T.reenable = nil
+    tip:setVisible(false)
+    tip:removeFromUIManager()
 end)
 
 -- ------------------------------------------------------------------ run

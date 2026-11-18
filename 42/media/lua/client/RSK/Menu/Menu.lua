@@ -1,8 +1,11 @@
--- RSK.Menu - M8, P3.3: themed context menu (D-144, RF-8.1, RF-8.9).
+-- RSK.Menu - M8, P3.3: themed context menu (D-144, RF-8.1, RF-8.9); P3.4: rows 30, icon column 28,
+-- no separators (D-145).
 -- Identical to the vanilla menu: the vanilla ISContextMenu:render() still builds and draws every
 -- row (layout, states, sub-menus, scrolling, tooltips, options added by other mods). While it runs,
 -- the draw methods of the ISContextMenu class translate its fixed colours into theme tokens
--- (RSK.Menu.Logic). The font is already the mod's (D-109).
+-- (RSK.Menu.Logic) and moves the icon column, icons and texts to the D-145 geometry (row height via
+-- setFont, width via calcWidth/setWidth, open sub-menus moved by the extra width). The font is
+-- already the mod's (D-109).
 -- Module off or in error: the plain vanilla render (D-44).
 require "ISUI/ISContextMenu"
 require "RSK/Core/Bootstrap"
@@ -28,8 +31,10 @@ M.origDraw = M.origDraw or {}
 local O = M.origDraw
 local P = {}
 function P.drawRect(self, x, y, w, h, a, r, g, b)
-    if self.rskCtx then
-        local tok, al = L.rect(a, r, g, b, self.rskCtx)
+    local ctx = self.rskCtx
+    if ctx then
+        local tok, al = L.rect(a, r, g, b, ctx)
+        if tok == "bg" and x == 0 and w == ctx.geo.vCol then w = ctx.geo.col end -- icon column
         if tok then r, g, b, a = rgbaOf(tok, al) end
     end
     return O.drawRect(self, x, y, w, h, a, r, g, b)
@@ -58,7 +63,10 @@ local function textArgs(self, r, g, b, a)
     return r, g, b, a
 end
 function P.drawText(self, str, x, y, r, g, b, a, font)
-    if self.rskCtx then r, g, b, a = textArgs(self, r, g, b, a) end
+    if self.rskCtx then
+        r, g, b, a = textArgs(self, r, g, b, a)
+        x = L.textX(x, self.rskCtx.geo)
+    end
     return O.drawText(self, str, x, y, r, g, b, a, font)
 end
 function P.drawTextRight(self, str, x, y, r, g, b, a, font)
@@ -77,9 +85,54 @@ function P.drawTexture(self, tex, x, y, a, r, g, b)
     return O.drawTexture(self, tex, x, y, a, r, g, b)
 end
 function P.drawTextureScaledAspect(self, tex, x, y, w, h, a, r, g, b)
-    local tok, al = L.texture(which(self, tex))
+    local kind = which(self, tex)
+    local tok, al = L.texture(kind)
     if tok then r, g, b, a = rgbaOf(tok, al) end
+    if kind == "tick" then
+        local ix, iy, iw, ih = L.iconRect(x, y, w, h, self.rskCtx.geo, self.itemHgt)
+        if ix then x, y, w, h = ix, iy, iw, ih end
+    end
     return O.drawTextureScaledAspect(self, tex, x, y, w, h, a, r, g, b)
+end
+-- Option icons (texture, colour box, item) go to the centre of our icon column.
+function P.renderOptionTextureOrColor(self, option, x, y, w, h)
+    if self.rskCtx then
+        local ix, iy, iw, ih = L.iconRect(x, y, w, h, self.rskCtx.geo, self.itemHgt)
+        if ix then x, y, w, h = ix, iy, iw, ih end
+    end
+    return O.renderOptionTextureOrColor(self, option, x, y, w, h)
+end
+-- The width vanilla computes in render() gets the extra width of our icon column.
+function P.setWidth(self, w)
+    if self.rskCtx and type(w) == "number" then w = w + self.rskCtx.geo.shift end
+    return O.setWidth(self, w)
+end
+
+-- Outside render: row height when the font is set, width when options are added.
+local W = {}
+function W.setFont(self, font)
+    O.setFont(self, font)
+    if K.isActive(M.ID) and type(self.fontHgt) == "number" then
+        self.itemHgt = L.rowHeight(self.fontHgt, T.px)
+    end
+end
+function W.calcWidth(self)
+    local w = O.calcWidth(self)
+    if K.isActive(M.ID) and type(w) == "number" and type(self.itemHgt) == "number" then
+        w = w + L.geometry(self.itemHgt, T.px).shift
+    end
+    return w
+end
+
+-- Vanilla places an open sub-menu at x + its own width + 1: move it past our wider menu.
+local function placeSubMenus(menu)
+    if not menu.options or not menu.getSubMenu then return end
+    for _, k in ipairs(menu.options) do
+        if k.subOption ~= nil then
+            local sm = menu:getSubMenu(k.subOption)
+            if sm and sm:isVisible() and sm.x > menu.x then sm:setX(menu.x + menu.width + 1) end
+        end
+    end
 end
 
 local function colour(c) return c and { r = c:getR(), g = c:getG(), b = c:getB() } or nil end
@@ -105,9 +158,11 @@ function M.themedRender(menu)
         end
     end
     menu.rskCtx = { bg = menu.backgroundColor, border = menu.borderColor,
-        bad = colour(core:getBadHighlitedColor()), good = colour(core:getGoodHighlitedColor()) }
+        bad = colour(core:getBadHighlitedColor()), good = colour(core:getGoodHighlitedColor()),
+        geo = L.geometry(menu.itemHgt, T.px) }
     local ok, err = pcall(M.origRender, menu)
     menu.rskCtx = nil
+    if ok then ok, err = pcall(placeSubMenus, menu) end
     M.stats.renders = M.stats.renders + 1
     if rawget(menu, "rskCtx") ~= nil then M.stats.leftovers = M.stats.leftovers + 1 end
     if not ok then error(err) end
@@ -130,6 +185,12 @@ function M.installHook()
     for name, fn in pairs(P) do
         if rawget(ISContextMenu, name) ~= fn then
             O[name] = ISContextMenu[name] -- inherited from ISUIElement (or a class override)
+            rawset(ISContextMenu, name, fn)
+        end
+    end
+    for name, fn in pairs(W) do
+        if rawget(ISContextMenu, name) ~= fn then
+            O[name] = ISContextMenu[name]
             rawset(ISContextMenu, name, fn)
         end
     end
