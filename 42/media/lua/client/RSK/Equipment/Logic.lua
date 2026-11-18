@@ -429,3 +429,86 @@ function L.place(invX, invY, invW, w, h, gap, screenW, screenH)
     if y < 0 then y = 0 end
     return x, y
 end
+
+-- ---------------------------------------------------------------- Protection tab (D-147)
+-- Parts in vanilla order (BodyPartType index 0..16, as ISCharacterProtection) and ISBodyPartPanel texture names.
+L.PROT_PARTS = {
+    { "Hand_L", "left-hand" }, { "Hand_R", "right-hand" }, { "ForeArm_L", "lower-left-arm" },
+    { "ForeArm_R", "lower-right-arm" }, { "UpperArm_L", "upper-left-arm" }, { "UpperArm_R", "upper-right-arm" },
+    { "Torso_Upper", "chest", 30 }, { "Torso_Lower", "abdomen", 50 }, { "Head", "head" }, { "Neck", "neck" },
+    { "Groin", "groin", 100 }, { "UpperLeg_L", "left-thigh" }, { "UpperLeg_R", "right-thigh" },
+    { "LowerLeg_L", "left-calf" }, { "LowerLeg_R", "right-calf" }, { "Foot_L", "left-foot" }, { "Foot_R", "right-foot" },
+}
+L.PROT = { BODY_W = 123, BODY_H = 302, PAD_X = 10, PAD_Y = 12, GAP = 12, HEAD = 26, ROW = 28, CELL_PAD = 8,
+    BITE_W = 52, SCR_W = 56, LEGEND_H = 42, FILL_ALPHA = 0.75, OUTLINE = 2 }
+
+-- Whole percent as the vanilla panel: luautils.round, then floor.
+function L.protValue(v)
+    return math.floor(math.floor((tonumber(v) or 0) + 0.5))
+end
+
+-- Value colour: 0 muted, then the bar thresholds (ok >= 60, accent >= 30, danger below).
+function L.protTok(v)
+    if v <= 0 then return "muted" end
+    if v >= 60 then return "ok" elseif v >= 30 then return "accent" end
+    return "danger"
+end
+
+-- Silhouette fill: bite/scratch average at 75%; no protection = panel2, opaque (not red).
+function L.protFill(bite, scratch)
+    local avg = (bite + scratch) / 2
+    if avg <= 0 then return "panel2", 1 end
+    return L.protTok(avg), L.PROT.FILL_ALPHA
+end
+
+-- Table rows from raw values: list of { id, name, bite, scratch } in vanilla order.
+function L.protRows(raw)
+    local rows = {}
+    for i, r in ipairs(raw) do
+        local b, s = L.protValue(r.bite), L.protValue(r.scratch)
+        local fill, alpha = L.protFill(b, s)
+        rows[i] = { id = r.id, name = r.name, bite = b, scratch = s, biteText = b .. "%", scrText = s .. "%",
+            biteTok = L.protTok(b), scrTok = L.protTok(s), fill = fill, fillAlpha = alpha }
+    end
+    return rows
+end
+
+-- Part under (x, y) in silhouette units; boxes = { id, x, y, w, h, z }. Highest z wins, like ISBodyPartPanel.
+function L.protPartAt(boxes, x, y)
+    local best, bestZ
+    for _, b in ipairs(boxes) do
+        if x >= b.x and x <= b.x + b.w and y >= b.y and y <= b.y + b.h and (not bestZ or (b.z or 0) > bestZ) then
+            best, bestZ = b.id, b.z or 0
+        end
+    end
+    return best
+end
+
+-- Layout in 1080p units, page coordinates (w x pageH). Columns widen to fit their header or "100%"
+-- (measured widths already in units). Row i (1-based) at rowY + (i - 1) * ROW.
+function L.protLayout(w, pageH, n, biteNeed, scrNeed)
+    local P = L.PROT
+    local tableX = P.PAD_X + P.BODY_W + P.GAP
+    local tableW = w - tableX - P.PAD_X
+    local biteW = math.max(P.BITE_W, math.ceil(biteNeed or 0))
+    local scrW = math.max(P.SCR_W, math.ceil(scrNeed or 0))
+    local legendY = pageH - P.LEGEND_H
+    return {
+        bodyX = P.PAD_X, bodyY = P.PAD_Y, bodyW = P.BODY_W, bodyH = P.BODY_H,
+        tableX = tableX, tableW = tableW, headY = P.PAD_Y, rowY = P.PAD_Y + P.HEAD,
+        scrRight = tableX + tableW - P.CELL_PAD, biteRight = tableX + tableW - P.CELL_PAD - scrW,
+        nameX = tableX + P.CELL_PAD, nameW = tableW - 2 * P.CELL_PAD - biteW - scrW,
+        tableBottom = P.PAD_Y + P.HEAD + n * P.ROW, legendY = legendY, legendMid = legendY + (P.LEGEND_H + 10 - 14) / 2,
+    }
+end
+
+-- Row under page y; nil outside the table.
+function L.protRowAt(lay, n, x, y)
+    if x < lay.tableX or x >= lay.tableX + lay.tableW or y < lay.rowY then return nil end
+    local i = math.floor((y - lay.rowY) / L.PROT.ROW) + 1
+    return i <= n and i or nil
+end
+
+-- Legend: four bands; the last text (no protection) is translated by the caller.
+-- U+2265 is in the Fira atlases (tools/fontgen, D-161).
+L.PROT_LEGEND = { { "ok", "\226\137\165 60%" }, { "accent", "\226\137\165 30%" }, { "danger", "< 30%" }, { "panel2", nil } }

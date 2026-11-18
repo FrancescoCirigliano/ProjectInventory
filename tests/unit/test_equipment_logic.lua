@@ -217,4 +217,45 @@ test("T-22m", "posizione e misura di M2 salvate: testo, minimi, dentro lo scherm
     x, y = L.clampPos(-30, -5, 424, 1920, 1080, 44); eq(x, 0); eq(y, 0)
 end)
 
+test("T-34a", "Protezione: 17 parti in ordine vanilla, valori interi come il vanilla, colori a soglie (D-147)", function()
+    local L = RSK.Equipment.Logic
+    eq(#L.PROT_PARTS, 17); eq(L.PROT_PARTS[1][1], "Hand_L"); eq(L.PROT_PARTS[7][1], "Torso_Upper"); eq(L.PROT_PARTS[17][1], "Foot_R")
+    eq(L.protValue(59.6), 60); eq(L.protValue(59.4), 59); eq(L.protValue(nil), 0)
+    eq(L.protTok(0), "muted"); eq(L.protTok(1), "danger"); eq(L.protTok(29), "danger"); eq(L.protTok(30), "accent")
+    eq(L.protTok(59), "accent"); eq(L.protTok(60), "ok"); eq(L.protTok(100), "ok")
+    local raw = {}
+    for i, p in ipairs(L.PROT_PARTS) do raw[i] = { id = p[1], name = p[1], bite = 0, scratch = 0 } end
+    raw[7].bite, raw[7].scratch = 40.2, 65   -- leather jacket
+    raw[16].bite, raw[16].scratch = 60, 80   -- boots
+    raw[11].bite, raw[11].scratch = 0, 20    -- scratch only
+    local rows = L.protRows(raw)
+    eq(#rows, 17)
+    eq(rows[7].biteText, "40%"); eq(rows[7].scrText, "65%"); eq(rows[7].biteTok, "accent"); eq(rows[7].scrTok, "ok")
+    eq(rows[7].fill, "accent"); eq(rows[7].fillAlpha, 0.75, "media 52.5")
+    eq(rows[16].fill, "ok"); eq(rows[11].fill, "danger", "media 10"); eq(rows[11].biteTok, "muted", "0% muted")
+    eq(rows[1].fill, "panel2", "scoperta"); eq(rows[1].fillAlpha, 1); eq(rows[1].biteText, "0%")
+    eq(#L.PROT_LEGEND, 4); eq(L.PROT_LEGEND[4][1], "panel2")
+end)
+
+test("T-34b", "Protezione: parte sotto il mouse con z, riga sotto il mouse, disposizione nella pagina", function()
+    local L = RSK.Equipment.Logic
+    local boxes = { { id = "Torso_Upper", x = 30, y = 60, w = 60, h = 70, z = 30 },
+        { id = "Torso_Lower", x = 35, y = 110, w = 50, h = 40, z = 50 }, { id = "Head", x = 40, y = 0, w = 40, h = 50 } }
+    eq(L.protPartAt(boxes, 50, 80), "Torso_Upper"); eq(L.protPartAt(boxes, 50, 120), "Torso_Lower", "z piu' alta")
+    eq(L.protPartAt(boxes, 50, 10), "Head"); eq(L.protPartAt(boxes, 5, 5), nil)
+    local W = L.WIN
+    for _, size in ipairs({ { W.W, W.H }, { W.MIN_W, W.MIN_H } }) do
+        local pageH = size[2] - W.TITLE - W.TABS
+        local lay = L.protLayout(size[1], pageH, 17, 40, 60)
+        eq(lay.tableX, 145); eq(lay.tableX + lay.tableW, size[1] - 10, "margine destro")
+        eq(lay.scrRight - lay.biteRight, 60, "colonna graffio allargata al testo")
+        assert(lay.nameW >= 100, "spazio per il nome: " .. lay.nameW)
+        assert(lay.tableBottom <= lay.legendY, "tabella sopra la legenda")
+        assert(lay.bodyY + lay.bodyH <= lay.legendY, "sagoma sopra la legenda")
+        eq(L.protRowAt(lay, 17, lay.tableX + 1, lay.rowY), 1); eq(L.protRowAt(lay, 17, lay.tableX + 1, lay.rowY + 16 * 28 + 1), 17)
+        eq(L.protRowAt(lay, 17, lay.tableX + 1, lay.rowY + 17 * 28), nil); eq(L.protRowAt(lay, 17, 5, lay.rowY + 1), nil)
+    end
+    eq(L.protLayout(424, 604, 17, 0, 0).scrRight - L.protLayout(424, 604, 17, 0, 0).biteRight, 56, "minimo 56")
+end)
+
 return results

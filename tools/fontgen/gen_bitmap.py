@@ -52,7 +52,7 @@ def role_sizes(presets_path):
 
 
 def charset(cmap):
-    keep = lambda c: (0x20 <= c < 0x250) or (0x2000 <= c < 0x2070) or c in (0x20AC, 0x2122, 0x2116)
+    keep = lambda c: (0x20 <= c < 0x250) or (0x2000 <= c < 0x2070) or c in (0x20AC, 0x2122, 0x2116, 0x2264, 0x2265)
     return sorted(c for c in cmap if keep(c) and c not in EXCLUDE)
 
 

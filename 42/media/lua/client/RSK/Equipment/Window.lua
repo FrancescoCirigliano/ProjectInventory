@@ -1,5 +1,5 @@
 -- RSK.Equipment.Window - M2, P2.4: equipment and health window (RF-2.1...2.9; D-28...D-35, D-77...D-86).
--- First tab drawn here; Info, Skills, Protection, Temperature = moved vanilla panels (D-77).
+-- First tab drawn here; Skills, Temperature = moved vanilla panels (D-77); Protection themed (D-147).
 -- Treatment always through the vanilla health panel, which stays in its window even when hidden (D-84).
 require "ISUI/ISUI3DModel"
 require "ISUI/ISInventoryPane"
@@ -13,6 +13,7 @@ require "RSK/UI/Mute"
 require "RSK/Equipment/Logic"
 require "RSK/Equipment/Slot"
 require "RSK/Equipment/Exercises"
+require "RSK/Equipment/Protection"
 
 local T, D, UI, UL, Mute = RSK.Theme, RSK.UI.Draw, RSK.UI, RSK.UI.Logic, RSK.UI.Mute
 local Q = RSK.Equipment
@@ -524,21 +525,17 @@ function W:createChildren()
         self:addChild(self.btnClose)
     end
     local items = { { id = "equip", text = tx("TabEquip") } }
-    local vanilla = {
-        { id = "skills", field = "characterView", text = xpSystemText.skills },
-        { id = "protection", field = "protectionView", text = xpSystemText.protection },
-    }
-    for _, v in ipairs(vanilla) do
-        if v.id == "protection" then items[#items + 1] = { id = "fitness", text = tx("TabFitness") } end -- D-95
-        local view = self.cw[v.field]
-        if view and view.parent == self.cw.panel then -- tabs detached by hand in vanilla: they stay detached
-            items[#items + 1] = { id = v.id, text = v.text }
-            self:borrow(v.id, view)
-        end
+    local view = self.cw.characterView
+    if view and view.parent == self.cw.panel then -- tab detached by hand in vanilla: it stays detached
+        items[#items + 1] = { id = "skills", text = xpSystemText.skills }
+        self:borrow("skills", view)
     end
+    items[#items + 1] = { id = "fitness", text = tx("TabFitness") } -- D-95
+    items[#items + 1] = { id = "protection", text = xpSystemText.protection } -- own panel (D-147)
     items[#items + 1] = { id = "clothingIns", text = xpSystemText.clothingIns }
     self:buildClothing()
     self.exercises = self:addContent(Q.Exercises:new(0, PAGE_Y, lay.w, lay.pageH, self))
+    self.protection = self:addContent(Q.Protection:new(0, PAGE_Y, lay.w, lay.pageH, self))
     self.profile_ = self:addContent(Profile:new(0, PAGE_Y, lay.w, self))
     self.tabsEl = self:addContent(UI.Tabs:new(8, TITLE, lay.w - 16, items, self, W.onTab))
 
@@ -577,6 +574,8 @@ function W:arrange()
     self.page:setBase(nil, nil, lay.w, lay.pageH)
     self.exercises:setBase(nil, nil, lay.w, lay.pageH)
     self.exercises:arrange()
+    self.protection:setBase(nil, nil, lay.w, lay.pageH)
+    self.protection:arrange()
     self.profile_:setBase(nil, nil, lay.w, nil)
     self.profile_:arrange(lay.w, lay.pad)
     self:arrangeArea()
@@ -683,15 +682,18 @@ function W:withViewsAtHome(fn)
     if not ok then error(err, 0) end
 end
 
-function W:hasTab(id) return id == "equip" or self.tabViews[id] ~= nil end
+function W:hasTab(id) return id == "equip" or id == "protection" or self.tabViews[id] ~= nil end
 
 function W:applyTab()
     local equip = self.tab == "equip"
     local fitness = self.tab == "fitness"
+    local protection = self.tab == "protection"
     self.page:setVisible(equip)
     self.exercises:setVisible(fitness)
+    self.protection:setVisible(protection)
+    if protection then self.protection:refresh() end
     self.profile_:setVisible(self.tab == "skills")
-    self.scroller:setVisible(not equip and not fitness)
+    self.scroller:setVisible(not equip and not fitness and not protection)
     self:arrangeArea()
     for id, t in pairs(self.tabViews) do t.view:setVisible(id == self.tab) end
     self.tabsEl:select(self.tab, false)
@@ -873,6 +875,7 @@ function W:refresh()
     self:refreshStats(player)
     if self.tab == "skills" then self:refreshProfile(player) end
     if self.tab == "fitness" then self.exercises:refresh() end
+    if self.tab == "protection" then self.protection:refresh() end
     self.dirty = false
 end
 

@@ -57,6 +57,7 @@
     "UI_RSK_Eq_Slot_secondary": "Hand 2",
     "UI_RSK_Eq_OpenWindow": "Character",
     "UI_RSK_Eq_TabFitness": "Exercises",
+    "UI_RSK_Eq_ProtNone": "None",
     "UI_RSK_Eq_Start": "Start",
     "UI_RSK_Eq_Stop": "Stop",
     "UI_RSK_Eq_NeedItem": "Needs: %1",

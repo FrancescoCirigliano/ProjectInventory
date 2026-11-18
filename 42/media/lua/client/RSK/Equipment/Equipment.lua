@@ -30,6 +30,7 @@ if not Q.guarded then
     guardMethods(Q.Scroller, { "prerender", "render", "onMouseWheel" })
     guardMethods(Q.Profile, { "prerender" })
     guardMethods(Q.Exercises, { "prerender", "onStep", "onStart", "onStop", "onSelect" })
+    guardMethods(Q.Protection, { "prerender" })
     guardMethods(Q.Grip, { "onMouseDown", "onMouseMove", "onMouseMoveOutside", "onMouseUp", "onMouseUpOutside" })
     guardMethods(Q.Body, { "render", "onMouseDown", "onMouseUp", "onRightMouseUp" })
     guardMethods(Q.WoundAlert.Card, { "update", "render", "onMouseDown", "onMouseUp" })

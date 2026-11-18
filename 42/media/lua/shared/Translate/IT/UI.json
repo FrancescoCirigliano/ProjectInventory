@@ -57,6 +57,7 @@
     "UI_RSK_Eq_Slot_secondary": "Mano 2",
     "UI_RSK_Eq_OpenWindow": "Personaggio",
     "UI_RSK_Eq_TabFitness": "Esercizi",
+    "UI_RSK_Eq_ProtNone": "Nessuna",
     "UI_RSK_Eq_Start": "Inizia",
     "UI_RSK_Eq_Stop": "Interrompi",
     "UI_RSK_Eq_NeedItem": "Serve: %1",

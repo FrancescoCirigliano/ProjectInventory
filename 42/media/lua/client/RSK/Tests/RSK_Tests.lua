@@ -472,6 +472,56 @@ add("T-23", "M2: apertura, schede spostate e restituite, indossa e togli, ferita
     Q.destroy(0)
 end)
 
+-- P3.4 (D-147): themed Protection tab; with a real jacket worn, every part = vanilla panel values
+-- (getBodyPartClothingDefense, rounded as ISCharacterProtection); the vanilla panel stays in its window.
+add("T-44", "Protezione: scheda a tema, valori = vanilla con giacca vera, pannello vanilla al suo posto", function()
+    local Q = RSK.Equipment
+    local L = Q.Logic
+    local p = P()
+    local cw = getPlayerInfoPanel(0)
+    Q.destroy(0)
+    local jacket = spawnIn(p:getInventory(), "Base.Jacket_LeatherBrown")
+    local old = p:getWornItem(jacket:getBodyLocation())
+    if old then ISTimedActionQueue.add(ISUnequipAction:new(p, old, 1)); waitQueue() end
+    ISTimedActionQueue.add(ISWearClothing:new(p, jacket, 1))
+    waitQueue()
+    waitMs(300)
+    eq(p:isEquipped(jacket), true, "giacca non indossata")
+    cw:toggleView(xpSystemText.protection)
+    local w = Q.windows[0]
+    eq(w ~= nil and w:isShown() and w.tab == "protection", true, "M2 non aperta sulla Protezione")
+    eq(w.protection:getIsVisible(), true, "pannello Protezione nascosto")
+    eq(w.scroller:getIsVisible(), false, "area dei pannelli vanilla visibile")
+    eq(cw.protectionView.parent, cw.panel, "pannello Protezione vanilla spostato")
+    waitMs(300)
+    eq(RSK.Core.isActive(Q.ID), true, "disegno andato in errore (modulo spento)")
+    local rows = w.protection.rows
+    eq(#rows, 17, "parti")
+    local covered = 0
+    for i, r in ipairs(rows) do
+        local idx = i - 1
+        eq(r.id, BodyPartType.ToString(BodyPartType.FromIndex(idx)), "ordine vanilla")
+        eq(r.name, BodyPartType.getDisplayName(BodyPartType.FromIndex(idx)), "nome della parte")
+        local b = math.floor(luautils.round(p:getBodyPartClothingDefense(idx, true, false)))
+        local s = math.floor(luautils.round(p:getBodyPartClothingDefense(idx, false, false)))
+        eq(r.bite, b, "morso " .. r.id); eq(r.scratch, s, "graffio " .. r.id)
+        eq(r.fill == "panel2", b + s <= 0, "colore della parte " .. r.id)
+        if b + s > 0 then covered = covered + 1 end
+        T.contracts = T.contracts + 1
+    end
+    eq(covered > 0, true, "giacca senza protezione su nessuna parte")
+    eq(w.protection.boxes ~= nil and #w.protection.boxes, 17, "sagoma: texture vanilla mancanti")
+    local lay = w.protection.lay
+    eq(lay.tableBottom <= lay.legendY, true, "tabella sovrapposta alla legenda")
+    eq(lay.nameW > 0, true, "colonna dei nomi senza spazio")
+    cw:toggleView(xpSystemText.protection)
+    eq(w:isShown(), false, "stessa scheda deve chiudere")
+    ISTimedActionQueue.add(ISUnequipAction:new(p, jacket, 1))
+    waitQueue()
+    if old then ISTimedActionQueue.add(ISWearClothing:new(p, old, 1)); waitQueue() end
+    Q.destroy(0)
+end)
+
 -- P3.1 collectibles (D-130, D-138): keys on real items; found when entering the player
 -- inventory (nested bag included), not when only on the floor. The store is restored afterwards.
 add("T-26", "collezionabili: riconoscimento, trovato in inventario e borsa annidata, non a terra", function()
